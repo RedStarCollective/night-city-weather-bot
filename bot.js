@@ -158,18 +158,16 @@ function rollWeather() {
 }
 
 function createWeatherEmbed(weather) {
-    // Get current date but set year to 2047
+    // Get current date and just change the year to 2047
     const now = new Date();
-    const cyberpunkDate = new Date(now.getFullYear() + (2047 - now.getFullYear()), now.getMonth(), now.getDate());
-    
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                    'July', 'August', 'September', 'October', 'November', 'December'];
     
-    const dayName = days[cyberpunkDate.getDay()];
-    const monthName = months[cyberpunkDate.getMonth()];
-    const date = cyberpunkDate.getDate();
-    const year = cyberpunkDate.getFullYear();
+    const dayName = days[now.getDay()]; // Use actual current day of week
+    const monthName = months[now.getMonth()];
+    const date = now.getDate();
+    const year = 2047; // Just set year to 2047
     
     const formattedDate = `${dayName}, ${monthName} ${date}, ${year}`;
     
