@@ -1,9 +1,96 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const cron = require('node-cron');
+const fs = require('fs');
+const path = require('path');
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
+
+// File to store ongoing weather events
+const EVENTS_FILE = path.join(__dirname, 'ongoing_events.json');
+
+// Load ongoing events from file
+function loadOngoingEvents() {
+    try {
+        if (fs.existsSync(EVENTS_FILE)) {
+            const data = fs.readFileSync(EVENTS_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.log('Error loading ongoing events:', error);
+    }
+    return [];
+}
+
+// Save ongoing events to file
+function saveOngoingEvents(events) {
+    try {
+        fs.writeFileSync(EVENTS_FILE, JSON.stringify(events, null, 2));
+    } catch (error) {
+        console.log('Error saving ongoing events:', error);
+    }
+}
+
+// Add new ongoing event
+function addOngoingEvent(condition, duration) {
+    const events = loadOngoingEvents();
+    
+    // Parse duration - convert "3 Days" to days, "45 Minutes" to minutes, etc.
+    let durationInDays = 0;
+    let originalDuration = duration;
+    
+    if (duration.includes('Days')) {
+        durationInDays = parseInt(duration.split(' ')[0]);
+    } else if (duration.includes('Hours')) {
+        // Convert hours to fraction of days for simplicity, but we'll handle hours specially
+        const hours = parseInt(duration.split(' ')[0]);
+        if (hours >= 24) {
+            durationInDays = Math.ceil(hours / 24);
+        } else {
+            durationInDays = 1; // Less than 24 hours = expires today
+        }
+    } else if (duration.includes('Minutes')) {
+        durationInDays = 1; // Minutes = expires today
+    }
+    
+    if (durationInDays > 1) { // Only track multi-day events
+        events.push({
+            condition: condition,
+            originalDuration: originalDuration,
+            daysRemaining: durationInDays - 1, // -1 because today is day 1
+            startDate: new Date().toDateString()
+        });
+        saveOngoingEvents(events);
+    }
+}
+
+// Get active ongoing events and update their durations
+function getActiveOngoingEvents() {
+    const events = loadOngoingEvents();
+    const activeEvents = [];
+    const updatedEvents = [];
+    
+    events.forEach(event => {
+        if (event.daysRemaining > 0) {
+            activeEvents.push({
+                ...event,
+                daysRemaining: event.daysRemaining
+            });
+            // Decrement for next day
+            updatedEvents.push({
+                ...event,
+                daysRemaining: event.daysRemaining - 1
+            });
+        }
+        // Events with 0 days remaining are not added back (they expire)
+    });
+    
+    // Save updated events (with decremented days)
+    saveOngoingEvents(updatedEvents.filter(e => e.daysRemaining > 0));
+    
+    return activeEvents;
+}
 
 // Weather Tables from Night City Weather DLC
 const weatherTables = {
@@ -152,6 +239,9 @@ function rollWeather() {
                 condition = "Heat Wave"; 
             }
         }
+        
+        // Add to ongoing events if duration > 1 day
+        addOngoingEvent(condition, duration);
     }
     
     return { temperature, condition, duration, season };
@@ -170,6 +260,9 @@ function createWeatherEmbed(weather) {
     const year = 2047; // Just set year to 2047
     
     const formattedDate = `${dayName}, ${monthName} ${date}, ${year}`;
+    
+    // Get active ongoing events
+    const ongoingEvents = getActiveOngoingEvents();
     
     const embed = new EmbedBuilder()
         .setTitle('🏙️ NCWR - NIGHT CITY WEATHER REPORT')
@@ -194,6 +287,20 @@ function createWeatherEmbed(weather) {
             name: '⏱️ DURATION', 
             value: weather.duration, 
             inline: true 
+        });
+    }
+    
+    // Add ongoing weather events if any
+    if (ongoingEvents.length > 0) {
+        const ongoingText = ongoingEvents.map(event => {
+            const daysText = event.daysRemaining === 1 ? '1 day' : `${event.daysRemaining} days`;
+            return `🔄 **${event.condition}** - ${daysText} remaining`;
+        }).join('\n');
+        
+        embed.addFields({ 
+            name: '🔄 CONTINUING FROM PREVIOUS DAYS', 
+            value: ongoingText, 
+            inline: false 
         });
     }
     
