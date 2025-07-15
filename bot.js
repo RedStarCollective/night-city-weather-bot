@@ -181,55 +181,54 @@ function createWeatherEmbed(weather) {
                  weather.condition.includes('Radioactive') ? '#00FF00' :
                  '#00BFFF')
         .addFields(
-            { name: '📅 **BROADCAST DATE**', value: `**${formattedDate}**`, inline: false },
-            { name: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', value: '\u200b', inline: false },
-            { name: '🌡️ **CURRENT TEMPERATURE**', value: `**${weather.temperature}**`, inline: true },
-            { name: '☁️ **CONDITIONS**', value: `**${weather.condition}**`, inline: true },
-            { name: '\u200b', value: '\u200b', inline: true } // Spacer for better layout
+            { name: '📅 BROADCAST DATE', value: `${formattedDate}`, inline: false },
+            { name: '🌡️ TEMPERATURE', value: weather.temperature, inline: true },
+            { name: '☁️ CONDITIONS', value: weather.condition, inline: true },
+            { name: '\u200b', value: '\u200b', inline: true } // Spacer
         )
         .setFooter({ 
-            text: `NCWR • Season: ${weather.season.charAt(0).toUpperCase() + weather.season.slice(1)} • Time of the Red • Live from Night City`
+            text: `NCWR • ${weather.season.charAt(0).toUpperCase() + weather.season.slice(1)} • Time of the Red`
         })
         .setTimestamp();
     
     if (weather.duration) {
         embed.addFields({ 
-            name: '⏱️ **ADVISORY DURATION**', 
-            value: `**${weather.duration}**`, 
+            name: '⏱️ DURATION', 
+            value: weather.duration, 
             inline: true 
         });
     }
     
-    // Add broadcast-style descriptions
+    // Add broadcast-style descriptions ONLY for emergencies
     let broadcastDescription = '';
     
     if (weather.condition.includes('Blood Rain')) {
-        broadcastDescription = '🚨 **WEATHER EMERGENCY** • The sky is crying blood! All citizens advised to seek immediate shelter. Avoid exposure without proper protection equipment.';
+        broadcastDescription = '🚨 **WEATHER EMERGENCY** • The sky is crying blood! All citizens advised to seek immediate shelter.';
     } else if (weather.condition.includes('Acid Rain')) {
-        broadcastDescription = '⚠️ **CORROSION ALERT** • Acidic precipitation detected across all districts. Equipment damage likely - protective measures recommended.';
+        broadcastDescription = '⚠️ **CORROSION ALERT** • Acidic precipitation detected. Equipment damage likely.';
     } else if (weather.condition.includes('Radioactive')) {
-        broadcastDescription = '☢️ **RADIATION WARNING** • Hot Zone particles detected in atmospheric winds. Radiation suits essential for outdoor activities.';
+        broadcastDescription = '☢️ **RADIATION WARNING** • Hot Zone particles detected. Radiation suits essential.';
     } else if (weather.condition.includes('Ash Storm')) {
-        broadcastDescription = '🌫️ **AIR QUALITY EMERGENCY** • Toxic ash clouds moving through the city. Breathing apparatus required for all outdoor activities.';
+        broadcastDescription = '🌫️ **AIR QUALITY EMERGENCY** • Toxic ash clouds detected. Breathing apparatus required.';
     } else if (weather.condition.includes('Deadly Thunderstorm')) {
-        broadcastDescription = '⛈️ **SEVERE WEATHER ALERT** • Extremely dangerous electrical activity detected. Avoid metallic objects and high structures.';
+        broadcastDescription = '⛈️ **SEVERE WEATHER ALERT** • Dangerous electrical activity. Avoid metallic objects.';
     } else if (weather.condition.includes('Cold Snap')) {
-        broadcastDescription = '🧊 **FREEZE WARNING** • Sub-zero temperatures creating hazardous ice conditions throughout Night City.';
+        broadcastDescription = '🧊 **FREEZE WARNING** • Sub-zero temperatures creating hazardous ice conditions.';
     } else if (weather.condition.includes('Heat Wave')) {
-        broadcastDescription = '🔥 **HEAT EMERGENCY** • Extreme temperatures pose serious health risks. Heavy armor and equipment use strongly discouraged.';
+        broadcastDescription = '🔥 **HEAT EMERGENCY** • Extreme temperatures pose serious health risks.';
     } else if (weather.condition.includes('Dust Storm')) {
-        broadcastDescription = '💨 **VISIBILITY ALERT** • Badlands dust storm approaching city limits. Respiratory protection advised.';
+        broadcastDescription = '💨 **VISIBILITY ALERT** • Badlands dust storm approaching. Respiratory protection advised.';
     } else if (weather.condition.includes('Inversion Smog')) {
-        broadcastDescription = '🏭 **POLLUTION ADVISORY** • Toxic smog levels critical across all sectors. Breathing apparatus mandatory.';
+        broadcastDescription = '🏭 **POLLUTION ADVISORY** • Toxic smog levels critical. Breathing apparatus mandatory.';
     } else if (weather.condition.includes('Flooding')) {
-        broadcastDescription = '🌊 **FLOOD WARNING** • Water levels rising due to structural instability. Avoid underground areas and low-lying districts.';
+        broadcastDescription = '🌊 **FLOOD WARNING** • Water levels rising. Avoid underground areas.';
     } else if (weather.condition.includes('Blackout')) {
-        broadcastDescription = '🔌 **INFRASTRUCTURE FAILURE** • Widespread power and communication outages reported. Essential services affected.';
-    } else {
-        broadcastDescription = `☀️ **TODAY\'S OUTLOOK** • ${weather.condition.toLowerCase()} conditions expected across Night City. Stay vigilant, citizens.`;
+        broadcastDescription = '🔌 **INFRASTRUCTURE FAILURE** • Widespread power outages reported.';
     }
     
-    embed.setDescription(broadcastDescription);
+    if (broadcastDescription) {
+        embed.setDescription(broadcastDescription);
+    }
     
     // Temperature mechanical effects
     let mechanicalEffects = [];
@@ -300,12 +299,7 @@ function createWeatherEmbed(weather) {
     // Add mechanical effects if any exist
     if (mechanicalEffects.length > 0) {
         embed.addFields({ 
-            name: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 
-            value: '\u200b', 
-            inline: false 
-        });
-        embed.addFields({ 
-            name: '❗ **ADVISORY**', 
+            name: '❗ ADVISORY', 
             value: mechanicalEffects.join('\n\n'), 
             inline: false 
         });
