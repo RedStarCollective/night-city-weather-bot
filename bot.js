@@ -230,13 +230,6 @@ function createWeatherEmbed(weather) {
         embed.setDescription(broadcastDescription);
     }
     
-    // Add ongoing event information
-    embed.addFields({ 
-        name: '⚡ ONGOING EVENT', 
-        value: 'Intermittent blackouts continue to affect **Little Europe**, **Old Japantown**, **The Glen**, **Little China**, **University District**, and **Upper Marina** (bordering the Hot Zone). Citizens in these areas should expect power fluctuations and prepare accordingly.\n\n**Blackout Effects**: While not an actual weather condition, loss of power, CitiNet access, and communications often happens due to extreme meteorological activity. For the duration of the outage, any building in the area without a generator won\'t have electricity and Agents won\'t be able to make calls or connect to the Data Pool. [(NCW)](https://rtalsoriangames.com/wp-content/uploads/2021/07/RTG-CPR-NightCityWeather.pdf)', 
-        inline: false 
-    });
-    
     // Temperature mechanical effects
     let mechanicalEffects = [];
     
@@ -311,6 +304,20 @@ function createWeatherEmbed(weather) {
             inline: false 
         });
     }
+    
+    // Add separator before ongoing event
+    embed.addFields({ 
+        name: '▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬', 
+        value: '\u200b', 
+        inline: false 
+    });
+    
+    // Add ongoing event information at the bottom
+    embed.addFields({ 
+        name: '⚡ ONGOING EVENT', 
+        value: 'Intermittent blackouts continue to affect **Little Europe**, **Old Japantown**, **The Glen**, **Little China**, **University District**, and **Upper Marina** (bordering the Hot Zone). Citizens in these areas should expect power fluctuations and prepare accordingly.\n\n**Blackout Effects**: While not an actual weather condition, loss of power, CitiNet access, and communications often happens due to extreme meteorological activity. For the duration of the outage, any building in the area without a generator won\'t have electricity and Agents won\'t be able to make calls or connect to the Data Pool. [(NCW)](https://rtalsoriangames.com/wp-content/uploads/2021/07/RTG-CPR-NightCityWeather.pdf)', 
+        inline: false 
+    });
     
     return embed;
 }
