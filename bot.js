@@ -158,20 +158,78 @@ function rollWeather() {
 }
 
 function createWeatherEmbed(weather) {
+    // Get current date but set year to 2047
+    const now = new Date();
+    const cyberpunkDate = new Date(now.getFullYear() + (2047 - now.getFullYear()), now.getMonth(), now.getDate());
+    
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                   'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    const dayName = days[cyberpunkDate.getDay()];
+    const monthName = months[cyberpunkDate.getMonth()];
+    const date = cyberpunkDate.getDate();
+    const year = cyberpunkDate.getFullYear();
+    
+    const formattedDate = `${dayName}, ${monthName} ${date}, ${year}`;
+    
     const embed = new EmbedBuilder()
-        .setTitle('🌆 Night City Weather Report')
+        .setTitle('📺 NCWR - NIGHT CITY WEATHER REPORT')
         .setColor(weather.condition.includes('Blood') ? '#FF0000' : 
                  weather.condition.includes('Acid') ? '#FFFF00' :
-                 weather.condition.includes('Storm') ? '#800080' : '#00BFFF')
+                 weather.condition.includes('Storm') ? '#800080' : 
+                 weather.condition.includes('Radioactive') ? '#00FF00' :
+                 '#00BFFF')
         .addFields(
-            { name: '🌡️ Temperature', value: weather.temperature, inline: true },
-            { name: '☁️ Conditions', value: weather.condition, inline: true }
+            { name: '📅 **BROADCAST DATE**', value: `**${formattedDate}**`, inline: false },
+            { name: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', value: '\u200b', inline: false },
+            { name: '🌡️ **CURRENT TEMPERATURE**', value: `**${weather.temperature}**`, inline: true },
+            { name: '☁️ **CONDITIONS**', value: `**${weather.condition}**`, inline: true },
+            { name: '\u200b', value: '\u200b', inline: true } // Spacer for better layout
         )
-        .setFooter({ text: `Season: ${weather.season.charAt(0).toUpperCase() + weather.season.slice(1)} | Time of the Red` });
+        .setFooter({ 
+            text: `NCWR • Season: ${weather.season.charAt(0).toUpperCase() + weather.season.slice(1)} • Time of the Red • Live from Night City`
+        })
+        .setTimestamp();
     
     if (weather.duration) {
-        embed.addFields({ name: '⏱️ Duration', value: weather.duration, inline: true });
+        embed.addFields({ 
+            name: '⏱️ **ADVISORY DURATION**', 
+            value: `**${weather.duration}**`, 
+            inline: true 
+        });
     }
+    
+    // Add broadcast-style descriptions
+    let broadcastDescription = '';
+    
+    if (weather.condition.includes('Blood Rain')) {
+        broadcastDescription = '🚨 **WEATHER EMERGENCY** • The sky is crying blood! All citizens advised to seek immediate shelter. Avoid exposure without proper protection equipment.';
+    } else if (weather.condition.includes('Acid Rain')) {
+        broadcastDescription = '⚠️ **CORROSION ALERT** • Acidic precipitation detected across all districts. Equipment damage likely - protective measures recommended.';
+    } else if (weather.condition.includes('Radioactive')) {
+        broadcastDescription = '☢️ **RADIATION WARNING** • Hot Zone particles detected in atmospheric winds. Radiation suits essential for outdoor activities.';
+    } else if (weather.condition.includes('Ash Storm')) {
+        broadcastDescription = '🌫️ **AIR QUALITY EMERGENCY** • Toxic ash clouds moving through the city. Breathing apparatus required for all outdoor activities.';
+    } else if (weather.condition.includes('Deadly Thunderstorm')) {
+        broadcastDescription = '⛈️ **SEVERE WEATHER ALERT** • Extremely dangerous electrical activity detected. Avoid metallic objects and high structures.';
+    } else if (weather.condition.includes('Cold Snap')) {
+        broadcastDescription = '🧊 **FREEZE WARNING** • Sub-zero temperatures creating hazardous ice conditions throughout Night City.';
+    } else if (weather.condition.includes('Heat Wave')) {
+        broadcastDescription = '🔥 **HEAT EMERGENCY** • Extreme temperatures pose serious health risks. Heavy armor and equipment use strongly discouraged.';
+    } else if (weather.condition.includes('Dust Storm')) {
+        broadcastDescription = '💨 **VISIBILITY ALERT** • Badlands dust storm approaching city limits. Respiratory protection advised.';
+    } else if (weather.condition.includes('Inversion Smog')) {
+        broadcastDescription = '🏭 **POLLUTION ADVISORY** • Toxic smog levels critical across all sectors. Breathing apparatus mandatory.';
+    } else if (weather.condition.includes('Flooding')) {
+        broadcastDescription = '🌊 **FLOOD WARNING** • Water levels rising due to structural instability. Avoid underground areas and low-lying districts.';
+    } else if (weather.condition.includes('Blackout')) {
+        broadcastDescription = '🔌 **INFRASTRUCTURE FAILURE** • Widespread power and communication outages reported. Essential services affected.';
+    } else {
+        broadcastDescription = `☀️ **TODAY\'S OUTLOOK** • ${weather.condition.toLowerCase()} conditions expected across Night City. Stay vigilant, citizens.`;
+    }
+    
+    embed.setDescription(broadcastDescription);
     
     // Temperature mechanical effects
     let mechanicalEffects = [];
@@ -242,8 +300,13 @@ function createWeatherEmbed(weather) {
     // Add mechanical effects if any exist
     if (mechanicalEffects.length > 0) {
         embed.addFields({ 
-            name: '⚙️ Mechanical Effects', 
-            value: mechanicalEffects.join('\n'), 
+            name: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 
+            value: '\u200b', 
+            inline: false 
+        });
+        embed.addFields({ 
+            name: '❗ **ADVISORY**', 
+            value: mechanicalEffects.join('\n\n'), 
             inline: false 
         });
     }
