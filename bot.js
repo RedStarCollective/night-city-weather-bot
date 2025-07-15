@@ -174,14 +174,14 @@ function createWeatherEmbed(weather) {
     const formattedDate = `${dayName}, ${monthName} ${date}, ${year}`;
     
     const embed = new EmbedBuilder()
-        .setTitle('📺 NCWR - NIGHT CITY WEATHER REPORT')
+        .setTitle('🏙️ NCWR - NIGHT CITY WEATHER REPORT')
         .setColor(weather.condition.includes('Blood') ? '#FF0000' : 
                  weather.condition.includes('Acid') ? '#FFFF00' :
                  weather.condition.includes('Storm') ? '#800080' : 
                  weather.condition.includes('Radioactive') ? '#00FF00' :
                  '#00BFFF')
         .addFields(
-            { name: '📅 BROADCAST DATE', value: `${formattedDate}`, inline: false },
+            { name: 'BROADCAST DATE', value: `${formattedDate}`, inline: false },
             { name: '🌡️ TEMPERATURE', value: weather.temperature, inline: true },
             { name: '☁️ CONDITIONS', value: weather.condition, inline: true },
             { name: '\u200b', value: '\u200b', inline: true } // Spacer
