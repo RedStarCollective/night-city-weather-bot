@@ -429,11 +429,31 @@ client.on('messageCreate', async (message) => {
             .setColor('#00BFFF')
             .addFields(
                 { name: '!weather', value: 'Roll current weather conditions' },
+                { name: '!weather force [condition] [days]', value: 'Force an ongoing weather event (Admin only)' },
                 { name: 'Daily Posts', value: 'Bot automatically posts weather at 8 AM daily' }
             )
             .setDescription('Based on the official Night City Weather tables from Cyberpunk RED');
         
         await message.channel.send({ embeds: [helpEmbed] });
+    }
+    
+    // Force ongoing weather command
+    if (message.content.toLowerCase().startsWith('!weather force ')) {
+        const args = message.content.slice(15).split(' '); // Remove "!weather force "
+        
+        if (args.length >= 2) {
+            const days = parseInt(args[args.length - 1]); // Last argument should be days
+            const condition = args.slice(0, -1).join(' '); // Everything except last argument
+            
+            if (!isNaN(days) && days > 0) {
+                addOngoingEvent(condition, `${days} Days`);
+                await message.channel.send(`✅ Added ongoing weather: **${condition}** for ${days} days`);
+            } else {
+                await message.channel.send('❌ Invalid format. Use: `!weather force [condition] [days]`\nExample: `!weather force Blood Rain 4`');
+            }
+        } else {
+            await message.channel.send('❌ Invalid format. Use: `!weather force [condition] [days]`\nExample: `!weather force Deadly Thunderstorm 4`');
+        }
     }
 });
 
