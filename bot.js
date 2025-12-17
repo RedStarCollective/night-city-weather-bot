@@ -171,20 +171,20 @@ const weatherTables = {
 const strangeWeather = {
     conditions: [
         "Radioactive Windstorm",
-        "Ash Storm", 
+        "Ash Storm",
         "Flooding",
         "Blood Rain",
         "Acid Rain",
         "Deadly Thunderstorm",
         "Inversion Smog",
         "Cold Snap/Heat Wave",
-        "Dust Storm", 
+        "Dust Storm",
         "Blackout"
     ],
     durations: [
         "1d6 x 10 Minutes",
         "1d6 x 10 Minutes",
-        "1d6 Days", 
+        "1d6 Days",
         "1d6 Hours",
         "1d6 Hours",
         "1d6 x 10 Minutes",
@@ -195,6 +195,33 @@ const strangeWeather = {
     ]
 };
 
+// Districts table for Blackout events
+const districts = [
+    "Little Europe",
+    "Upper Marina",
+    "Downtown",
+    "Little China",
+    "University District",
+    "The Glen",
+    "Old Japantown",
+    "South Night City",
+    "Port Of Night City",
+    "Reclamation Zone",
+    "Old Combat Zone",
+    "NorCal Military Base",
+    "Watson Development",
+    "Kabuki",
+    "New Westbrook",
+    "Charter Hill",
+    "Exec Zone",
+    "North Heywood",
+    "Heywood Docks",
+    "Heywood Industrial Zone",
+    "Santo Domingo",
+    "Pacifica Playground",
+    "Rancho Coronado"
+];
+
 // Utility functions
 function rollD6() {
     return Math.floor(Math.random() * 6) + 1;
@@ -202,6 +229,11 @@ function rollD6() {
 
 function rollD10() {
     return Math.floor(Math.random() * 10) + 1;
+}
+
+function rollDistrict() {
+    const index = Math.floor(Math.random() * districts.length);
+    return districts[index];
 }
 
 function getCurrentSeason() {
@@ -215,36 +247,42 @@ function getCurrentSeason() {
 function rollWeather() {
     const season = getCurrentSeason();
     const table = weatherTables[season];
-    
+
     const tempRoll = rollD6() - 1; // Convert to 0-5 for array index
     const conditionRoll = rollD6() - 1;
-    
+
     const temperature = table.temperature[tempRoll];
     let condition = table.conditions[conditionRoll];
     let duration = null;
-    
+    let district = null;
+
     // Check for strange weather
     if (condition === "Strange") {
         const strangeRoll = rollD10() - 1; // Convert to 0-9 for array index
         const durationRoll = rollD6();
-        
+
         condition = strangeWeather.conditions[strangeRoll];
         duration = strangeWeather.durations[strangeRoll].replace('1d6', durationRoll.toString());
-        
+
         // Handle Cold Snap/Heat Wave logic
         if (condition === "Cold Snap/Heat Wave") {
             if (temperature.includes("Cool") || temperature.includes("Cold")) {
                 condition = "Cold Snap";
             } else {
-                condition = "Heat Wave"; 
+                condition = "Heat Wave";
             }
         }
-        
+
+        // Roll for district if Blackout
+        if (condition === "Blackout") {
+            district = rollDistrict();
+        }
+
         // Add to ongoing events if duration > 1 day
         addOngoingEvent(condition, duration);
     }
-    
-    return { temperature, condition, duration, season };
+
+    return { temperature, condition, duration, season, district };
 }
 
 function createWeatherEmbed(weather) {
@@ -283,10 +321,18 @@ function createWeatherEmbed(weather) {
         .setTimestamp();
     
     if (weather.duration) {
-        embed.addFields({ 
-            name: '⏱️ DURATION', 
-            value: weather.duration, 
-            inline: true 
+        embed.addFields({
+            name: '⏱️ DURATION',
+            value: weather.duration,
+            inline: true
+        });
+    }
+
+    if (weather.district) {
+        embed.addFields({
+            name: '📍 AFFECTED DISTRICT',
+            value: weather.district,
+            inline: true
         });
     }
     
@@ -328,7 +374,8 @@ function createWeatherEmbed(weather) {
     } else if (weather.condition.includes('Flooding')) {
         broadcastDescription = '🌊 **FLOOD WARNING** • Water levels rising. Avoid underground areas.';
     } else if (weather.condition.includes('Blackout')) {
-        broadcastDescription = '🔌 **INFRASTRUCTURE FAILURE** • Widespread power outages reported.';
+        const districtText = weather.district ? ` in **${weather.district}**` : '';
+        broadcastDescription = `🔌 **INFRASTRUCTURE FAILURE** • Widespread power outages reported${districtText}.`;
     }
     
     if (broadcastDescription) {
@@ -397,7 +444,8 @@ function createWeatherEmbed(weather) {
             break;
             
         case 'Blackout':
-            mechanicalEffects.push('⚡ **Blackout**: While not an actual weather condition, loss of power, CitiNet access, and communications often happens due to extreme meteorological activity. The GM can determine where the outage is (1d10 blocks or neighborhood zones centered on the crew\'s current location, if determining randomly). For the duration of the outage, any building in the area without a generator won\'t have electricity and Agents won\'t be able to make calls or connect to the Data Pool. [(NCW)](https://rtalsoriangames.com/wp-content/uploads/2021/07/RTG-CPR-NightCityWeather.pdf)');
+            const blackoutDistrict = weather.district ? `The outage is affecting **${weather.district}**. ` : '';
+            mechanicalEffects.push(`⚡ **Blackout**: While not an actual weather condition, loss of power, CitiNet access, and communications often happens due to extreme meteorological activity. ${blackoutDistrict}For the duration of the outage, any building in the area without a generator won\'t have electricity and Agents won\'t be able to make calls or connect to the Data Pool. [(NCW)](https://rtalsoriangames.com/wp-content/uploads/2021/07/RTG-CPR-NightCityWeather.pdf)`);
             break;
     }
     
