@@ -227,17 +227,17 @@ const strangeWeather = {
 
 // Ash-Block Special Event Tables
 const ashBlockTables = {
-    // Temperature Table (1d10)
+    // Temperature Table (1d10) - shifted to reduce Bitter Cold frequency
     temperature: [
         "Bitter Cold (Around 22°F/-6°C)",  // 1
         "Cold (Around 28°F/-2°C)",          // 2
         "Cold (Around 30°F/-1°C)",          // 3
-        "Cold (Around 32°F/0°C)",           // 4
-        "Cool (Around 36°F/2°C)",           // 5
-        "Cool (Around 40°F/4°C)",           // 6
-        "Cool (Around 42°F/6°C)",           // 7
-        "Cool (Around 45°F/7°C)",           // 8
-        "Cool (Around 48°F/9°C)",           // 9
+        "Cool (Around 36°F/2°C)",           // 4
+        "Cool (Around 40°F/4°C)",           // 5
+        "Cool (Around 42°F/6°C)",           // 6
+        "Cool (Around 45°F/7°C)",           // 7
+        "Cool (Around 48°F/9°C)",           // 8
+        "Mild (Around 52°F/11°C)",          // 9
         "Mild (Around 52°F/11°C)"           // 10
     ],
     // Conditions Table (1d6)
@@ -415,7 +415,7 @@ function createWeatherEmbed(weather) {
     const dayName = days[now.getDay()]; // Use actual current day of week
     const monthName = months[now.getMonth()];
     const date = now.getDate();
-    const year = 2047; // Just set year to 2047
+    const year = 2048; // Just set year to 2048
 
     const formattedDate = `${dayName}, ${monthName} ${date}, ${year}`;
 
