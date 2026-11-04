@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const cron = require('node-cron');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
@@ -9,6 +10,10 @@ const client = new Client({
 
 // File to store ongoing weather events
 const EVENTS_FILE = path.join(__dirname, 'ongoing_events.json');
+// The latest report, served at /weather (Foundry's waiting room reads it)
+const LATEST_FILE = path.join(__dirname, 'latest_weather.json');
+// In-game year on the broadcast (env NC_YEAR, default 2047)
+const NC_YEAR = parseInt(process.env.NC_YEAR, 10) || 2047;
 
 // Load ongoing events from file
 function loadOngoingEvents() {
@@ -247,6 +252,36 @@ function rollWeather() {
     return { temperature, condition, duration, season };
 }
 
+// Broadcast-style line, emergencies only
+function broadcastFor(condition) {
+    let broadcastDescription = '';
+
+    if (condition.includes('Blood Rain')) {
+        broadcastDescription = '🚨 **WEATHER EMERGENCY** • The sky is crying blood! All citizens advised to seek immediate shelter.';
+    } else if (condition.includes('Acid Rain')) {
+        broadcastDescription = '⚠️ **CORROSION ALERT** • Acidic precipitation detected. Equipment damage likely.';
+    } else if (condition.includes('Radioactive')) {
+        broadcastDescription = '☢️ **RADIATION WARNING** • Hot Zone particles detected. Radiation suits essential.';
+    } else if (condition.includes('Ash Storm')) {
+        broadcastDescription = '🌫️ **AIR QUALITY EMERGENCY** • Toxic ash clouds detected. Breathing apparatus required.';
+    } else if (condition.includes('Deadly Thunderstorm')) {
+        broadcastDescription = '⛈️ **SEVERE WEATHER ALERT** • Dangerous electrical activity. Avoid metallic objects.';
+    } else if (condition.includes('Cold Snap')) {
+        broadcastDescription = '🧊 **FREEZE WARNING** • Sub-zero temperatures creating hazardous ice conditions.';
+    } else if (condition.includes('Heat Wave')) {
+        broadcastDescription = '🔥 **HEAT EMERGENCY** • Extreme temperatures pose serious health risks.';
+    } else if (condition.includes('Dust Storm')) {
+        broadcastDescription = '💨 **VISIBILITY ALERT** • Badlands dust storm approaching. Respiratory protection advised.';
+    } else if (condition.includes('Inversion Smog')) {
+        broadcastDescription = '🏭 **POLLUTION ADVISORY** • Toxic smog levels critical. Breathing apparatus mandatory.';
+    } else if (condition.includes('Flooding')) {
+        broadcastDescription = '🌊 **FLOOD WARNING** • Water levels rising. Avoid underground areas.';
+    } else if (condition.includes('Blackout')) {
+        broadcastDescription = '🔌 **INFRASTRUCTURE FAILURE** • Widespread power outages reported.';
+    }
+    return broadcastDescription;
+}
+
 function createWeatherEmbed(weather) {
     // Get current date and just change the year to 2047
     const now = new Date();
@@ -257,12 +292,14 @@ function createWeatherEmbed(weather) {
     const dayName = days[now.getDay()]; // Use actual current day of week
     const monthName = months[now.getMonth()];
     const date = now.getDate();
-    const year = 2047; // Just set year to 2047
+    const year = NC_YEAR;
     
     const formattedDate = `${dayName}, ${monthName} ${date}, ${year}`;
     
     // Get active ongoing events
     const ongoingEvents = getActiveOngoingEvents();
+    weather.ongoing = ongoingEvents;
+    weather.date = formattedDate;
     
     const embed = new EmbedBuilder()
         .setTitle('🏙️ NCWR - NIGHT CITY WEATHER REPORT')
@@ -305,31 +342,7 @@ function createWeatherEmbed(weather) {
     }
     
     // Add broadcast-style descriptions ONLY for emergencies
-    let broadcastDescription = '';
-    
-    if (weather.condition.includes('Blood Rain')) {
-        broadcastDescription = '🚨 **WEATHER EMERGENCY** • The sky is crying blood! All citizens advised to seek immediate shelter.';
-    } else if (weather.condition.includes('Acid Rain')) {
-        broadcastDescription = '⚠️ **CORROSION ALERT** • Acidic precipitation detected. Equipment damage likely.';
-    } else if (weather.condition.includes('Radioactive')) {
-        broadcastDescription = '☢️ **RADIATION WARNING** • Hot Zone particles detected. Radiation suits essential.';
-    } else if (weather.condition.includes('Ash Storm')) {
-        broadcastDescription = '🌫️ **AIR QUALITY EMERGENCY** • Toxic ash clouds detected. Breathing apparatus required.';
-    } else if (weather.condition.includes('Deadly Thunderstorm')) {
-        broadcastDescription = '⛈️ **SEVERE WEATHER ALERT** • Dangerous electrical activity. Avoid metallic objects.';
-    } else if (weather.condition.includes('Cold Snap')) {
-        broadcastDescription = '🧊 **FREEZE WARNING** • Sub-zero temperatures creating hazardous ice conditions.';
-    } else if (weather.condition.includes('Heat Wave')) {
-        broadcastDescription = '🔥 **HEAT EMERGENCY** • Extreme temperatures pose serious health risks.';
-    } else if (weather.condition.includes('Dust Storm')) {
-        broadcastDescription = '💨 **VISIBILITY ALERT** • Badlands dust storm approaching. Respiratory protection advised.';
-    } else if (weather.condition.includes('Inversion Smog')) {
-        broadcastDescription = '🏭 **POLLUTION ADVISORY** • Toxic smog levels critical. Breathing apparatus mandatory.';
-    } else if (weather.condition.includes('Flooding')) {
-        broadcastDescription = '🌊 **FLOOD WARNING** • Water levels rising. Avoid underground areas.';
-    } else if (weather.condition.includes('Blackout')) {
-        broadcastDescription = '🔌 **INFRASTRUCTURE FAILURE** • Widespread power outages reported.';
-    }
+    const broadcastDescription = broadcastFor(weather.condition);
     
     if (broadcastDescription) {
         embed.setDescription(broadcastDescription);
@@ -413,6 +426,52 @@ function createWeatherEmbed(weather) {
     return embed;
 }
 
+// ---------------------------------------------------------------- the feed
+// Every roll (daily post or !weather) becomes the latest report. GET /weather returns it as JSON,
+// readable from any browser page (Foundry's waiting room polls it every 10 minutes).
+function loadLatest() {
+    try { if (fs.existsSync(LATEST_FILE)) return JSON.parse(fs.readFileSync(LATEST_FILE, 'utf8')); } catch (error) { console.log('Error loading latest weather:', error); }
+    return null;
+}
+let latestWeather = loadLatest();
+
+function recordReport(weather) {
+    const c = /(-?\d+)\s*°C/.exec(weather.temperature || '');
+    const f = /(-?\d+)\s*°F/.exec(weather.temperature || '');
+    const feel = (/^(\w+)/.exec(weather.temperature || '') || [])[1] || '';
+    const plain = (t) => String(t || '').replace(/\*\*/g, '').replace(/[^\x20-\x7E\u00A0-\u024F•°]/g, '').replace(/\s+/g, ' ').trim();
+    latestWeather = {
+        summary: weather.condition,
+        condition: weather.condition,
+        temperature: weather.temperature,
+        feel,
+        tempC: c ? Number(c[1]) : null,
+        tempF: f ? Number(f[1]) : null,
+        duration: weather.duration || null,
+        season: weather.season,
+        strange: !!weather.duration,
+        alert: plain(broadcastFor(weather.condition)) || null,
+        ongoing: (weather.ongoing || []).map(e => ({ condition: e.condition, daysRemaining: e.daysRemaining })),
+        date: weather.date || null,
+        rolledAt: new Date().toISOString()
+    };
+    try { fs.writeFileSync(LATEST_FILE, JSON.stringify(latestWeather, null, 2)); } catch (error) { console.log('Error saving latest weather:', error); }
+}
+
+const server = http.createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+    const url = (req.url || '/').split('?')[0];
+    if (url === '/weather') {
+        res.writeHead(latestWeather ? 200 : 404, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        return res.end(JSON.stringify(latestWeather || { error: 'No weather rolled yet. Use !weather or wait for the daily report.' }));
+    }
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('NCWR online. Latest report: /weather');
+});
+server.listen(process.env.PORT || 3000, () => console.log(`Weather feed on port ${process.env.PORT || 3000} (/weather)`));
+
 // Command handling
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
@@ -420,6 +479,7 @@ client.on('messageCreate', async (message) => {
     if (message.content.toLowerCase() === '!weather') {
         const weather = rollWeather();
         const embed = createWeatherEmbed(weather);
+        recordReport(weather);
         await message.channel.send({ embeds: [embed] });
     }
     
@@ -461,6 +521,7 @@ client.on('messageCreate', async (message) => {
 cron.schedule('0 8 * * *', async () => {
     const weather = rollWeather();
     const embed = createWeatherEmbed(weather);
+    recordReport(weather);
     
     // Find the channel to post in
     const channelId = process.env.CHANNEL_ID;
